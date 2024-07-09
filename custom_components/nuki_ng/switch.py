@@ -4,7 +4,7 @@ from homeassistant.helpers.entity import EntityCategory
 
 import logging
 
-from . import NukiEntity, NukiOpenerRingSuppressionEntity
+from . import NukiEntity
 from .constants import DOMAIN
 from .states import LockModes
 
@@ -26,11 +26,7 @@ async def async_setup_entry(
         if coordinator.info_field(dev_id, None, "advancedConfig", "autoLock") != None:
             entities.append(LockAutoLock(coordinator, dev_id))
         if coordinator.info_field(dev_id, None, "config", "buttonEnabled") != None:
-            entities.append(LockButtonEnabled(coordinator, dev_id))            
-        if coordinator.info_field(dev_id, -1, "openerAdvancedConfig", "doorbellSuppression")  >= 0:
-            entities.append(OpenerRingSuppression(coordinator, dev_id))
-            entities.append(OpenerRingSuppressionRTO(coordinator, dev_id))
-            entities.append(OpenerRingSuppressionCM(coordinator, dev_id))
+            entities.append(LockButtonEnabled(coordinator, dev_id))
         if coordinator.is_opener(dev_id):
             entities.append(OpenerContinuousMode(coordinator, dev_id))
     async_add_entities(entities)
@@ -150,53 +146,6 @@ class LockButtonEnabled(NukiEntity, SwitchEntity):
             self.device_id, "config", dict(buttonEnabled=False)
         )
         
-class OpenerRingSuppressionSwitch(NukiOpenerRingSuppressionEntity, SwitchEntity):
-    
-    def __init__(self, coordinator, device_id, suppression):
-        super().__init__(coordinator, device_id)
-        self._suppression = suppression
-    
-    @property
-    def entity_registry_enabled_default(self):
-        return False
-
-    @property
-    def is_on(self):
-        return (self.doorbellSuppression & self._suppression) != 0
-
-    async def async_turn_on(self, **kwargs):
-        await self.update_doorbell_suppression(self.doorbellSuppression | self._suppression)
-
-    async def async_turn_off(self, **kwargs):
-        await self.update_doorbell_suppression(self.doorbellSuppression & (~self._suppression))
-
-
-class OpenerRingSuppression(OpenerRingSuppressionSwitch):
-
-    def __init__(self, coordinator, device_id):
-        super().__init__(coordinator, device_id, NukiOpenerRingSuppressionEntity.SUP_RING)
-        self.set_id("switch", "ring_suppression")
-        self.set_name("Ring suppression")
-        self._attr_icon = "mdi:bell-cancel"
-
-
-class OpenerRingSuppressionRTO(OpenerRingSuppressionSwitch):
-
-    def __init__(self, coordinator, device_id):
-        super().__init__(coordinator, device_id, NukiOpenerRingSuppressionEntity.SUP_RTO)
-        self.set_id("switch", "ring_suppression_rto")
-        self.set_name("Ring suppression (Ring to Open)")
-        self._attr_icon = "mdi:bell-cancel"
-
-
-class OpenerRingSuppressionCM(OpenerRingSuppressionSwitch):
-
-    def __init__(self, coordinator, device_id):
-        super().__init__(coordinator, device_id, NukiOpenerRingSuppressionEntity.SUP_CM)
-        self.set_id("switch", "ring_suppression_cm")
-        self.set_name("Ring suppression (Continuous Mode)")
-        self._attr_icon = "mdi:bell-cancel"
-
 
 class OpenerContinuousMode(NukiEntity, SwitchEntity):
 

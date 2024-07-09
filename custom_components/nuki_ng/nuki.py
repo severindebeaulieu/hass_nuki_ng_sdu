@@ -7,7 +7,6 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.network import get_url
-from homeassistant.components import webhook
 from homeassistant.exceptions import HomeAssistantError
 
 import requests
@@ -21,17 +20,11 @@ from .constants import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-BRIDGE_DISCOVERY_API = "https://api.nuki.io/discover/bridges"
-BRIDGE_HOOK = "nuki_ng_bridge_hook"
-BRIDGE_TIMEOUT = 10
-
 class NukiInterface:
     def __init__(
-        self, hass, *, bridge: str = None, token: str = None, web_token: str = None, use_hashed: bool = False
+        self, hass, *, web_token: str = None, use_hashed: bool = False
     ):
         self.hass = hass
-        self.bridge = bridge
-        self.token = token
         self.web_token = web_token
         self.use_hashed = False
 
@@ -44,73 +37,6 @@ class NukiInterface:
             return dict()
         json_resp = response.json()
         return json_resp
-
-    async def discover_bridge(self) -> str:
-        try:
-            response = await self.async_json(lambda r: r.get(BRIDGE_DISCOVERY_API))
-            bridges = response.get("bridges", [])
-            if len(bridges) > 0:
-                return bridges[0]["ip"]
-        except Exception as err:
-            _LOGGER.exception(f"Failed to discover bridge:", err)
-        return ""
-
-    def bridge_url(self, path: str, extra=None) -> str:
-        extra_str = "&%s" % (urlencode(extra)) if extra else ""
-        url = f"http://{self.bridge}:8080"
-        if re.match(r".+:\d+$", self.bridge):
-            # Port inside
-            url = f"http://{self.bridge}"
-        if self.use_hashed:
-            tz = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            rnr = randint(0, 65535)
-            to_hash = "%s,%s,%s" % (tz, rnr, self.token)
-            hashed = sha256(to_hash.encode("utf-8")).hexdigest()
-            return f"{url}{path}?ts={tz}&rnr={rnr}&hash={hashed}{extra_str}"
-        return f"{url}{path}?token={self.token}{extra_str}"
-
-    async def bridge_list(self):
-        data = await self.async_json(lambda r: r.get(self.bridge_url("/list"), timeout=BRIDGE_TIMEOUT))
-        result = dict()
-        for item in data:
-            result[item.get("nukiId")] = item
-        return result
-
-    async def bridge_info(self):
-        return await self.async_json(lambda r: r.get(self.bridge_url("/info"), timeout=BRIDGE_TIMEOUT))
-
-    async def bridge_reboot(self):
-        return await self.async_json(lambda r: r.get(self.bridge_url("/reboot"), timeout=BRIDGE_TIMEOUT))
-
-    async def bridge_fwupdate(self):
-        return await self.async_json(lambda r: r.get(self.bridge_url("/fwupdate"), timeout=BRIDGE_TIMEOUT))
-
-    async def bridge_lock_action(self, dev_id: str, action: str, device_type):
-        actions_map = {
-            "unlock": 1,
-            "lock": 2,
-            "open": 3,
-            "lock_n_go": 4,
-            "lock_n_go_open": 5,
-            "activate_rto": 1,
-            "deactivate_rto": 2,
-            "electric_strike_actuation": 3,
-            "activate_continuous_mode": 4,
-            "deactivate_continuous_mode": 5,
-        }
-        return await self.async_json(
-            lambda r: r.get(
-                self.bridge_url(
-                    "/lockAction",
-                    dict(
-                        action=actions_map[action],
-                        nukiId=dev_id,
-                        deviceType=device_type,
-                    ),
-                ),
-                timeout=BRIDGE_TIMEOUT
-            )
-        )
 
     async def web_lock_action(self, dev_id: str, action: str):
         actions_map = {
@@ -133,52 +59,6 @@ class NukiInterface:
             )
         )
 
-    async def bridge_remove_callback(self, callback: str):
-        callbacks = await self.async_json(
-            lambda r: r.get(self.bridge_url("/callback/list"), timeout=BRIDGE_TIMEOUT)
-        )
-        _LOGGER.debug(f"bridge_remove_callback: {callbacks}, {callback}")
-        callbacks_list = callbacks.get("callbacks", [])
-        for item in callbacks_list:
-            if item["url"] == callback:
-                result = await self.async_json(
-                    lambda r: r.get(
-                        self.bridge_url("/callback/remove", {"id": item["id"]}),
-                        timeout=BRIDGE_TIMEOUT
-                    )
-                )
-                if not result.get("success", True):
-                    raise HomeAssistantError(result.get("message"))
-                return True
-        return False
-
-    async def bridge_check_callback(self, callback: str):
-        callbacks = await self.async_json(
-            lambda r: r.get(self.bridge_url("/callback/list"), timeout=BRIDGE_TIMEOUT)
-        )
-        _LOGGER.debug(f"bridge_check_callback: {callbacks}, {callback}")
-        result = dict()
-        callbacks_list = callbacks.get("callbacks", [])
-        if len(callbacks_list) and callbacks_list[0]["url"] == callback:
-            _LOGGER.debug("Callback is set")
-            return callbacks_list
-        add_callbacks = [callback]
-        for item in callbacks_list:
-            if item["url"] != callback:
-                add_callbacks.append(item["url"])
-            await self.bridge_remove_callback(item["url"])
-        for callback_url in add_callbacks[:3]:
-            result = await self.async_json(
-                lambda r: r.get(self.bridge_url("/callback/add", {"url": callback_url}), timeout=BRIDGE_TIMEOUT)
-            )
-            if not result.get("success", True):
-                raise HomeAssistantError(result.get("message"))
-        _LOGGER.debug("Callback is set - re-added")
-        callbacks = await self.async_json(
-            lambda r: r.get(self.bridge_url("/callback/list"), timeout=BRIDGE_TIMEOUT)
-        )
-        return callbacks.get("callbacks", [])
-
     def web_url(self, path):
         return f"https://api.nuki.io{path}"
 
@@ -189,9 +69,6 @@ class NukiInterface:
 
     def can_web(self):
         return True if self.web_token else False
-
-    def can_bridge(self):
-        return True if self.token and self.bridge else False
 
     async def web_get_last_log(self, dev_id: str):
         lock_actions_map = {
@@ -355,8 +232,6 @@ class NukiCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.api = NukiInterface(
             hass,
-            bridge=config.get("address"),
-            token=config.get("token"),
             web_token=config.get("web_token"),
             use_hashed=config.get("use_hashed", False),
         )
@@ -365,22 +240,9 @@ class NukiCoordinator(DataUpdateCoordinator):
             _LOGGER,
             name=DOMAIN,
             update_method=self._make_update_method(),
-            update_interval=timedelta(seconds=config.get("update_seconds", 30)),
         )
-
-        hook_id = "%s_%s" % (BRIDGE_HOOK, entry.entry_id)
 
         url = config.get("hass_url", get_url(hass))
-        self.bridge_hook = "{}{}".format(url, webhook.async_generate_path(hook_id))
-        webhook.async_unregister(hass, hook_id)
-        webhook.async_register(
-            hass,
-            DOMAIN,
-            "bridge",
-            hook_id,
-            handler=self._make_bridge_hook_handler(),
-            local_only=True,
-        )
 
     def _add_update(self, dev_id: str, update):
         data = self.data
@@ -394,19 +256,10 @@ class NukiCoordinator(DataUpdateCoordinator):
             if key in update:
                 last_state[key] = update[key]
         previous["lastKnownState"] = last_state
-        self.async_set_updated_data(data)
-
-        """Turn off ring_action binary sensor after 5 seconds"""
-        if update.get("ringactionState", False) == True:
-            async def _schedule_callback(_now):
-                last_state["ringactionState"] = False
-                self.async_set_updated_data(data)
-            async_call_later(self.hass, 5, _schedule_callback)    
+        self.async_set_updated_data(data)  
 
     async def _update(self):
         try:
-            callbacks_list = None
-            bridge_info = None
             info_mapping = dict()
             device_list = None
             web_list = None
@@ -422,18 +275,6 @@ class NukiCoordinator(DataUpdateCoordinator):
                 elif deviceType == 4:
                     as_hex = f"4{as_hex}"
                 return int(as_hex, 16)
-            if self.api.can_bridge():
-                try:
-                    callbacks_list = await self.api.bridge_check_callback(
-                        self.bridge_hook
-                    )
-                except Exception:
-                    _LOGGER.exception(f"Failed to update callback {self.bridge_hook}")
-                bridge_info = await self.api.bridge_info()
-                for item in bridge_info.get("scanResults", []):
-                    info_mapping[item.get("nukiId")] = item
-                bridge_info["callbacks_list"] = callbacks_list
-                device_list = await self.api.bridge_list()
             if self.api.can_web():
                 try:
                     web_list = await self.api.web_list()
@@ -442,7 +283,7 @@ class NukiCoordinator(DataUpdateCoordinator):
                     _LOGGER.exception("Error while fetching list of devices via web API:")
                 if not device_list:
                     device_list = web_list
-            result = dict(devices={}, bridge_info=bridge_info)
+            result = dict(devices={})
             if not device_list:
                 raise HomeAssistantError("No available device data")
             for key, item in device_list.items():
@@ -473,7 +314,6 @@ class NukiCoordinator(DataUpdateCoordinator):
                     item["advancedConfig"] = web_list.get(web_id, {}).get("advancedConfig")
                     item["openerAdvancedConfig"] = web_list.get(web_id, {}).get("openerAdvancedConfig")
                 result["devices"][dev_id] = item
-                result["devices"][dev_id]["bridge_info"] = info_mapping.get(dev_id)
             _LOGGER.debug(f"_update: {json.dumps(result)}")
             return result
         except Exception as err:
@@ -486,51 +326,12 @@ class NukiCoordinator(DataUpdateCoordinator):
 
         return _update_data
 
-    def _make_bridge_hook_handler(self):
-        async def _hook_handler(hass, hook_id, request):
-            body = await request.json()
-            _LOGGER.debug(f"_hook_handler: {body}")
-            self._add_update(body.get("nukiId"), body)
-
-        return _hook_handler
-
-    async def unload(self):
-        try:
-            if self.api.can_bridge():
-                result = await self.api.bridge_remove_callback(self.bridge_hook)
-                _LOGGER.debug(f"unload: {result} {self.bridge_hook}")
-        except Exception:
-            _LOGGER.exception(f"Failed to remove callback")
 
     async def action(self, dev_id: str, action: str):
-        if self.api.can_bridge():
-            device_type = self.device_data(dev_id).get("deviceType")
-            result = await self.api.bridge_lock_action(dev_id, action, device_type)
-            if result.get("success"):
-                await self.async_request_refresh()
-            _LOGGER.debug(f"bridge action result: {result}, {action}")
-        elif self.api.can_web():
+        if self.api.can_web():
             await self.api.web_lock_action(self.web_id(dev_id), action)
             await self.async_request_refresh()
             _LOGGER.debug(f"web action result: {action}")
-
-    async def do_reboot(self):
-        if self.api.can_bridge():
-            await self.api.bridge_reboot()
-        else:
-            raise HomeAssistantError("Not supported")
-
-    async def do_fwupdate(self):
-        if self.api.can_bridge():
-            await self.api.bridge_fwupdate()
-        else:
-            raise HomeAssistantError("Not supported")
-
-    async def do_delete_callback(self, callback):
-        if self.api.can_bridge():
-            await self.api.bridge_remove_callback(callback)
-        else:
-            raise HomeAssistantError("Not supported")
 
     def device_data(self, dev_id: str):
         return self.data.get("devices", {}).get(dev_id, {})

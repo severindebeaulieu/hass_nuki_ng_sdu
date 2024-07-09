@@ -4,7 +4,7 @@ from homeassistant.helpers.entity import EntityCategory
 import logging
 from datetime import datetime
 
-from . import NukiEntity, NukiBridge
+from . import NukiEntity
 from .constants import DOMAIN
 from .states import DoorSensorStates, LockStates, DoorSecurityStates
 
@@ -16,13 +16,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     data = entry.as_dict()
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    if coordinator.api.can_bridge():
-        entities.append(BridgeWifiVersion(coordinator))
-        entities.append(BridgeVersion(coordinator))
     for dev_id in coordinator.data.get("devices", {}):
         entities.append(LockState(coordinator, dev_id))
-        if coordinator.api.can_bridge():
-            entities.append(RSSI(coordinator, dev_id))
         entities.append(LockVersion(coordinator, dev_id))
         if coordinator.device_supports(dev_id, "batteryChargeState"):
             entities.append(Battery(coordinator, dev_id))
@@ -79,31 +74,6 @@ class LockState(NukiEntity, SensorEntity):
         return EntityCategory.DIAGNOSTIC
 
 
-class RSSI(NukiEntity, SensorEntity):
-    def __init__(self, coordinator, device_id):
-        super().__init__(coordinator, device_id)
-        self.set_id("sensor", "rssi")
-        self.set_name("RSSI")
-        self._attr_device_class = "signal_strength"
-        self._attr_state_class = "measurement"
-
-    @property
-    def native_unit_of_measurement(self):
-        return "dBm"
-
-    @property
-    def native_value(self):
-        return self.data.get("bridge_info", {}).get("rssi")
-
-    @property
-    def state(self):
-        return self.native_value
-
-    @property
-    def entity_category(self):
-        return EntityCategory.DIAGNOSTIC
-
-
 class DoorSensorState(NukiEntity, SensorEntity):
     def __init__(self, coordinator, device_id):
         super().__init__(coordinator, device_id)
@@ -152,39 +122,6 @@ class DoorSecurityState(NukiEntity, SensorEntity):
         elif door_sensor_state == DoorSensorStates.DOOR_CLOSED:
             return DoorSecurityStates.CLOSED_AND_UNLOCKED
         return DoorSecurityStates.OPEN
-
-
-class BridgeWifiVersion(NukiBridge, SensorEntity):
-    def __init__(self, coordinator):
-        super().__init__(coordinator)
-        self.set_id("wifi_version")
-        self.set_name("WiFi Firmware Version")
-
-    @property
-    def state(self):
-        versions = self.data.get("versions", {})
-        return versions.get("wifiFirmwareVersion")
-
-    @property
-    def entity_category(self):
-        return EntityCategory.DIAGNOSTIC
-
-
-class BridgeVersion(NukiBridge, SensorEntity):
-    def __init__(self, coordinator):
-        super().__init__(coordinator)
-        self.set_id("version")
-        self.set_name("Firmware Version")
-
-    @property
-    def state(self):
-        versions = self.data.get("versions", {})
-        return versions.get("firmwareVersion")
-
-    @property
-    def entity_category(self):
-        return EntityCategory.DIAGNOSTIC
-
 
 class LockVersion(NukiEntity, SensorEntity):
 

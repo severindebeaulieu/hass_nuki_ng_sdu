@@ -4,16 +4,7 @@
 
 ### Features:
 * Supported modes:
-  * Nuki Bridge-only, with automatic webhook registration
-  * Cloud Web API, without Nuki bridge (Nuki Lock 3.0 Pro). Polling only
-  * Hybrid, using best parts of both
-* Exposes the detailed device information via sensors
-* If supported, enables access control to Nuki authorization objects (keypad codes, accounts)
-  
-  
-### Screenshots:
-<img width="1020" alt="Screenshot 2021-10-11 at 14 02 42" src="https://user-images.githubusercontent.com/159124/136786951-d1ffdb22-637a-49c2-a1ff-43c465a03f0b.png">
-  
+* TODO
   
 ## Setup
 
@@ -21,34 +12,21 @@
 
 ### Installation:
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=kvj&repository=hass_nuki_ng&category=integration)
-
 * Go to HACS -> Integrations
 * Click the three dots on the top right and select `Custom Repositories`
-* Enter `https://github.com/kvj/hass_nuki_ng` as repository, select the category `Integration` and click Add
-* A new custom integration shows up for installation (Nuki Lock) - install it
+* Enter `https://github.com/TODO` as repository, select the category `Integration` and click Add
+* A new custom integration shows up for installation (Nuki Lock SDU) - install it
 * Restart Home Assistant
 
 {% endif %}
   
 ### Configuration:
 
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=nuki_ng)
-
 * Go to Configuration -> Integrations
 * Click `Add Integration`
-* Search for `Nuki Lock` (not just `Nuki`, as this is the native integration from Home Assistant) and select it
-* The integration will try to automatically discover your Nuki Bridge hostname or IP address, if you have a bridge
-* It will also automatically enter the Home Assistant internal URL
-* Provide either the Bridge API token and URL and/or a web API token and click Submit
-* You can provide both, but you need to provide at least one
-  
-  
-#### Bridge API Token:
-The API token for the Nuki Bridge needs to be configured on the bridge, e.g. using the Nuki mobile app. The
-[Home Assistant Nuki documentation](https://www.home-assistant.io/integrations/nuki/) explains it like this:
-
-> To add a Nuki bridge to your installation, you need to enable developer mode on your bridge and define a port and an access token. This can be achieved using the [Android app](https://play.google.com/store/apps/details?id=io.nuki) or [iPhone app](https://apps.apple.com/app/nuki-smart-lock/id1044998081). Go to manage my devices, and select the bridge. Within the bridge configuration turn on the HTTP API and check the details in the screen. Please note that the API token should be 6-20 characters long, even though the app allows you to set a longer one.
+* Search for `Nuki Lock SDU` (not just `Nuki`, as this is the native integration from Home Assistant) and select it
+* It will automatically enter the Home Assistant internal URL
+* Provide web API token and click Submit
   
   
 #### Web API Token:
@@ -69,25 +47,11 @@ The integration provides several devices and entities to Home Assistant, dependi
 
 | Device            | Description                                                                                     |
 |-------------------|-------------------------------------------------------------------------------------------------|
-| Nuki Bridge       | Providing four diagnostic sensors about the state of the bridge.                                |
 | Nuki Lock         | Providing one `lock` entity, three state sensors and eight diagnostic sensors about the lock.   |
-| Nuki Opener       | Providing one `lock` entity, one state sensor and five diagnostic sensors about the opener.     |
 | Nuki Web API      | Providing configuration `switch` entities for access permissions as set in the Nuki app.        |
 
-In your setup, you could have several locks, but maybe no opener, no bridge or no web API.
-  
   
 ### Entities:
-
-#### Nuki Bridge:
-
-| Entity ID                                      | Type        |  Description                                                               |
-|------------------------------------------------|-------------|----------------------------------------------------------------------------|
-| binary_sensor.nuki_bridge_bridge_callback_set  | Diagnostic  | On, if the integration successfully registered a callback with the bridge  |
-| binary_sensor.nuki_bridge_connected            | Diagnostic  | On, if the bridge is reachable via WiFi                                    |
-| sensor.nuki_bridge_firmware_version            | Diagnostic  | The current firmware version of the bridge                                 |
-| sensor.nuki_bridge_wifi_firmware_version       | Diagnostic  | The current WiFi firmware version of the bridge                            |
-  
   
 #### Nuki Lock:
 
@@ -107,20 +71,6 @@ The entity IDs depend on the Nuki names of the lock. In the example below, it is
 | binary_sensor.nuki_wohnung_keypad_battery_critical | Diagnostic | Shows if the battery of the keypad has a critical level |
 | sensor.nuki_wohnung_rssi                       | Diagnostic  | Shows the received signal strength indicator of the lock   |
 | sensor.nuki_wohnung_state                      | Diagnostic  | Shows the state of the lock                     |
-  
-  
-#### Nuki Opener:
-
-The entity IDs depend on the Nuki names of the lock. In the example below, it is `Haustur`.
-
-| Entity ID                                      | Type        | Description                                     |
-|------------------------------------------------|-------------|-------------------------------------------------|
-| lock.nuki_haustur_lock                         | Control     | The main entity to control the opener           |
-| binary_sensor.nuki_haustur_locked              | Sensor      | Shows the state of the opener (locked or unlocked)  |
-| binary_sensor.nuki_haustur_battery_critical    | Diagnostic  | Shows if the battery has a critical level       |
-| sensor.nuki_haustur_firmware_version           | Diagnostic  | Shows the current firmware of the opener        |
-| sensor.nuki_haustur_rssi                       | Diagnostic  | Shows the received signal strength indicator of the opener   |
-| sensor.nuki_haustur_state                      | Diagnostic  | Shows the state of the opener (e.g., rto active)  |
   
   
 #### Nuki Web API:
@@ -144,7 +94,6 @@ The integration provides the following services:
 #### Service `lock.lock` 
 
 * For a Nuki Lock, this locks the door
-* For a Nuki Opener, this stops an active ring-to-open function
 
 The attribute should appear as a `target` for the service.
 
@@ -156,7 +105,6 @@ The attribute should appear as a `target` for the service.
 #### Service `lock.unlock` 
 
 * For a Nuki Lock, this unlocks the door
-* For a Nuki Opener, this starts the ring-to-open function
 
 The attribute should appear as a `target` for the service.
 
@@ -168,7 +116,6 @@ The attribute should appear as a `target` for the service.
 #### Service `lock.open` 
 
 * For a Nuki Lock, this unlatches the door
-* For a Nuki Opener, this buzzes the door open
 
 The attribute should appear as a `target` for the service.
 
@@ -177,26 +124,7 @@ The attribute should appear as a `target` for the service.
 | `entity_id`         |       no | Entity of the relevant lock.                          |
   
   
-#### Service `nuki_ng.bridge_reboot` 
-
-Reboots the Nuki Bridge. This service has no attributes
   
-  
-#### Service `nuki_ng.bridge_fwupdate` 
-
-Performs a bridge software update. This service has no attributes
-  
-  
-#### Service `nuki_ng.bridge_delete_callback` 
-
-Deletes a callback URL from the bridge callbacks list.
-The callbacks currently set are exposed as attributes of the 'Bridge Callback Set' entity.
-
-The attribute should appear as a `target` for the service.
-
-| Service data attribute    | Optional | Description                                           |
-|---------------------------|----------|-------------------------------------------------------|
-| `command`                 |       no | URL to delete.                                        |
 
 ## Useful tips
 
