@@ -1,0 +1,19 @@
+{
+  "title": "Cerradura Nuki",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nuevo dispositivo Nuki",
+        "data": {
+          "name": "Introduce nombre (opcional)",
+          "web_token": "Clave API de la Web",
+          "hass_url": "Dirección interna de Home Assistant"
+        }
+      }
+    },
+    "error": {
+      "invalid_web_token": "Error de comunicación con la API Web de Nuki",
+      "no_token": "Debes introducir la clave API de la Web"
+    }
+  }
+}

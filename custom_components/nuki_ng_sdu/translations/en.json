@@ -1,0 +1,19 @@
+{
+  "title": "Nuki Lock",
+  "config": {
+    "step": {
+      "user": {
+        "title": "New Nuki device",
+        "data": {
+          "name": "Entry name (optional)",
+          "web_token": "Web Api token",
+          "hass_url": "Home Assistant internal URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_web_token": "Error communicating with Nuki Web API",
+      "no_token": "Web API token is required"
+    }
+  }
+}

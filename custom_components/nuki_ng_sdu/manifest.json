@@ -1,0 +1,12 @@
+{
+  "domain": "nuki_ng_sdu",
+  "name": "Nuki Lock SDU",
+  "documentation": "https://github.com/severindebeaulieu/hass_nuki_ng_sdu",
+  "issue_tracker": "https://github.com/severindebeaulieu/hass_nuki_ng_sdu/issues",
+  "dependencies": [],
+  "codeowners": ["@severindebeaulieu"],
+  "requirements": [],
+  "iot_class": "local_polling",
+  "config_flow": true,
+  "version": "0.2.1"
+}

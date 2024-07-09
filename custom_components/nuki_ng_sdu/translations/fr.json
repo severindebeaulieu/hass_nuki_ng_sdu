@@ -1,0 +1,19 @@
+{
+  "title": "Nuki Lock",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nouvel appareil Nuki",
+        "data": {
+          "name": "Nom de l'entrée (facultatif)",
+          "web_token": "Jeton API Web",
+          "hass_url": "URL interne de Home Assistant"
+        }
+      }
+    },
+    "error": {
+      "invalid_web_token": "Erreur de communication avec l'API Web Nuki",
+      "no_token": "Un jeton API Web est requis"
+    }
+  }
+}
